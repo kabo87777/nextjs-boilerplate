@@ -22,16 +22,16 @@ const matrixCharacters = [
   ["慢", "貪", "嗔", "慢", "疑", "癡", "慢", "嗔", "疑", "癡"],
 ];
 
-// 3. 可選的 8 種顏色定義
+// 3. 簡化後的顏色定義 (純 Tailwind Class 字串)
 const colorOptions = [
-  { name: "第一組", value: "bg-red-500 text-white border-red-600" },
-  { name: "第二組", value: "bg-yellow-400 text-black border-yellow-500" },
-  { name: "第三組", value: "bg-green-500 text-white border-green-600" },
-  { name: "第四組", value: "bg-blue-500 text-white border-blue-600" },
-  { name: "第五組", value: "bg-purple-500 text-white border-purple-600" },
-  { name: "第六組", value: "bg-orange-500 text-white border-orange-600" },
-  { name: "", value: "bg-white text-black border-gray-300" },
-  { name: " ", value: "bg-black text-white border-zinc-800" },
+  "bg-red-500 text-white border-red-600",
+  "bg-yellow-400 text-black border-yellow-500",
+  "bg-green-500 text-white border-green-600",
+  "bg-blue-500 text-white border-blue-600",
+  "bg-purple-500 text-white border-purple-600",
+  "bg-orange-500 text-white border-orange-600",
+  "bg-white text-black border-gray-300", // 清除 (預設)
+  "bg-black text-white border-zinc-800", // 黑石
 ];
 
 export default function MatrixPage() {
@@ -114,8 +114,9 @@ export default function MatrixPage() {
     <main className="min-h-screen bg-zinc-900 text-white flex flex-col items-center justify-center p-4">
       <div className="max-w-4xl w-full flex flex-col items-center">
         
-        {/* 頂部：地表圖片 (保留) */}
+        {/* 頂部：地表圖片 */}
         <div className="w-full relative h-16 mb-2 rounded-t-lg overflow-hidden shadow-md">
+           <div className="absolute inset-0 bg-zinc-700"></div>
            <Image 
              src="/ground.png"
              alt="地表" 
@@ -125,41 +126,60 @@ export default function MatrixPage() {
            />
         </div>
 
-        {/* 中間主體：左右純黑石頭 + 中間 10x10 矩陣 */}
+        {/* 中間主體：左右純黑石頭 + 中間矩陣 */}
         <div className="w-full flex items-stretch gap-2">
           
-          {/* 左側：石頭 (改為純黑背景 bg-black，並加上灰白色文字) */}
-          <div className="w-12 bg-black flex items-center justify-center rounded-l-lg shadow-inner border border-zinc-800 flex-shrink-0">
-            <span className="writing-mode-vertical text-center font-bold tracking-widest text-zinc-400 text-sm select-none [writing-mode:vertical-lr]">
+          {/* 左側：石頭 */}
+          <div className="w-8 md:w-12 bg-black flex items-center justify-center rounded-l-lg shadow-inner border border-zinc-800 flex-shrink-0"></div>
+
+          {/* 核心網格區塊 - 加入 A-J 與 1-10 標示 */}
+          <div className="flex-1 bg-zinc-800 p-4 rounded-md border border-zinc-700 shadow-xl flex flex-col aspect-square max-h-[65vh]">
+            
+            <div className="grid grid-cols-[auto_repeat(10,minmax(0,1fr))] grid-rows-[auto_repeat(10,minmax(0,1fr))] gap-1 md:gap-1.5 w-full h-full">
               
-            </span>
+              {/* 左上角空白佔位 */}
+              <div className="w-5 md:w-6 h-5 md:h-6"></div>
+
+              {/* 頂部欄位標籤 (1 ~ 10) */}
+              {[...Array(10)].map((_, colIndex) => (
+                <div key={`header-col-${colIndex}`} className="flex items-end justify-center pb-1 text-zinc-400 font-mono text-xs md:text-sm font-bold select-none">
+                  {colIndex + 1}
+                </div>
+              ))}
+
+              {/* 內容列：左側行標籤 (A ~ J) + 矩陣按鈕 */}
+              {matrixCharacters.map((row, rowIndex) => (
+                <React.Fragment key={`row-group-${rowIndex}`}>
+                  
+                  {/* 左側列標籤 (A ~ J) */}
+                  <div className="flex items-center justify-end pr-1 md:pr-2 text-zinc-400 font-mono text-xs md:text-sm font-bold select-none">
+                    {String.fromCharCode(65 + rowIndex)}
+                  </div>
+
+                  {/* 矩陣按鈕 */}
+                  {row.map((char, colIndex) => (
+                    <button
+                      key={`${rowIndex}-${colIndex}`}
+                      onClick={() => handleCellClick(rowIndex, colIndex)}
+                      className={`w-full h-full flex items-center justify-center font-bold text-base md:text-xl rounded transition-all duration-200 border transform active:scale-95 shadow-sm ${gridColors[rowIndex][colIndex]}`}
+                    >
+                      {char}
+                    </button>
+                  ))}
+
+                </React.Fragment>
+              ))}
+            </div>
+
           </div>
 
-          {/* 核心 10x10 網格 */}
-          <div className="flex-1 bg-zinc-800 p-4 rounded-md border border-zinc-700 shadow-xl grid grid-cols-10 gap-1.5 aspect-square max-h-[65vh]">
-            {matrixCharacters.map((row, rowIndex) =>
-              row.map((char, colIndex) => (
-                <button
-                  key={`${rowIndex}-${colIndex}`}
-                  onClick={() => handleCellClick(rowIndex, colIndex)}
-                  className={`w-full h-full flex items-center justify-center font-bold text-base md:text-xl rounded transition-all duration-200 border transform active:scale-95 shadow-sm ${gridColors[rowIndex][colIndex]}`}
-                >
-                  {char}
-                </button>
-              ))
-            )}
-          </div>
-
-          {/* 右側：石頭 (改為純黑背景 bg-black，並加上灰白色文字) */}
-          <div className="w-12 bg-black flex items-center justify-center rounded-r-lg shadow-inner border border-zinc-800 flex-shrink-0">
-            <span className="writing-mode-vertical text-center font-bold tracking-widest text-zinc-400 text-sm select-none [writing-mode:vertical-lr]">
-              
-            </span>
-          </div>
+          {/* 右側：石頭 */}
+          <div className="w-8 md:w-12 bg-black flex items-center justify-center rounded-r-lg shadow-inner border border-zinc-800 flex-shrink-0"></div>
         </div>
 
-        {/* 底部：鑽石終點圖片 (保留) */}
+        {/* 底部：鑽石終點圖片 */}
         <div className="w-full relative h-16 mt-2 rounded-b-lg overflow-hidden shadow-md">
+           <div className="absolute inset-0 bg-cyan-900"></div>
            <Image 
              src="/diamond.png"
              loading="eager"
@@ -182,26 +202,28 @@ export default function MatrixPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-zinc-800 border border-zinc-700 p-6 rounded-xl max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-bold text-center mb-4 text-zinc-100">
-              請選擇操作位置：({selectedCell?.row ? selectedCell.row + 1 : 1}, {selectedCell?.col ? selectedCell.col + 1 : 1})
+              請選擇操作位置：({selectedCell ? String.fromCharCode(65 + selectedCell.row) : "A"}, {selectedCell ? selectedCell.col + 1 : 1})
             </h3>
             
             <button
               onClick={handleDrawQuestion}
-              className="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-3 rounded-lg font-bold mb-5 transition-colors shadow-md"
+              className="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-3 rounded-lg font-bold mb-5 transition-colors shadow-md flex items-center justify-center gap-2"
             >
-              ❓ 隨機抽取問題
+              <span>❓</span> 隨機抽取問題
             </button>
 
             <div className="border-t border-zinc-700 pt-4">
-              <p className="text-sm text-zinc-400 mb-2 font-medium">🎨 變更格子顏色：</p>
-              <div className="grid grid-cols-4 gap-2">
-                {colorOptions.map((color) => (
+              <p className="text-sm text-zinc-400 mb-3 font-medium text-center">🎨 變更格子顏色</p>
+              
+              {/* 修改為純顏色色塊 (Swatches) */}
+              <div className="grid grid-cols-4 gap-3">
+                {colorOptions.map((colorClass, index) => (
                   <button
-                    key={color.name}
-                    onClick={() => handleColorSelect(color.value)}
-                    className={`h-10 text-xs font-bold rounded border ${color.value} flex items-center justify-center hover:opacity-90 active:scale-95 transition-transform`}
+                    key={colorClass}
+                    onClick={() => handleColorSelect(colorClass)}
+                    title={index === 6 ? "清除" : index === 7 ? "黑石" : `顏色 ${index + 1}`}
+                    className={`h-12 w-full rounded-md border-2 shadow-sm hover:scale-105 active:scale-95 transition-all ${colorClass} ${index === 6 ? 'relative' : ''}`}
                   >
-                    {color.name}
                   </button>
                 ))}
               </div>
@@ -209,7 +231,7 @@ export default function MatrixPage() {
 
             <button
               onClick={closeModal}
-              className="w-full mt-5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 py-2 rounded-lg text-sm transition-colors"
+              className="w-full mt-6 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 py-2.5 rounded-lg text-sm transition-colors"
             >
               取消
             </button>
