@@ -8,7 +8,7 @@ interface Question {
   isShown: boolean;
 }
 
-// 2. 依照圖片精確提取的 10x10 矩陣文字
+// 1. 更新為 8 列 x 10 行 的矩陣
 const matrixCharacters = [
   ["貪", "疑", "疑", "嗔", "慢", "疑", "疑", "癡", "慢", "嗔"],
   ["嗔", "癡", "嗔", "癡", "貪", "癡", "嗔", "嗔", "癡", "疑"],
@@ -18,34 +18,77 @@ const matrixCharacters = [
   ["貪", "疑", "癡", "癡", "疑", "慢", "疑", "癡", "慢", "疑"],
   ["慢", "嗔", "貪", "貪", "嗔", "貪", "貪", "疑", "嗔", "嗔"],
   ["嗔", "癡", "慢", "嗔", "癡", "慢", "嗔", "慢", "癡", "貪"],
-  ["疑", "慢", "慢", "疑", "貪", "嗔", "癡", "貪", "貪", "慢"],
-  ["慢", "貪", "嗔", "慢", "疑", "癡", "慢", "嗔", "疑", "癡"],
 ];
 
-// 3. 簡化後的顏色定義 (純 Tailwind Class 字串)
+const rowLabels = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const colLabels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+
+// 顏色定義
 const colorOptions = [
-  "bg-red-500 text-white border-red-600",
-  "bg-yellow-400 text-black border-yellow-500",
-  "bg-green-500 text-white border-green-600",
-  "bg-blue-500 text-white border-blue-600",
-  "bg-purple-500 text-white border-purple-600",
-  "bg-orange-500 text-white border-orange-600",
-  "bg-white text-black border-gray-300", // 清除 (預設)
-  "bg-black text-white border-zinc-800", // 黑石
+  { name: "白色", value: "bg-white text-black border-gray-300" },
+  { name: "紅色", value: "bg-red-500 text-white border-red-600" },
+  { name: "黃色", value: "bg-yellow-400 text-black border-yellow-500" },
+  { name: "綠色", value: "bg-green-500 text-white border-green-600" },
+  { name: "藍色", value: "bg-blue-500 text-white border-blue-600" },
+  { name: "紫色", value: "bg-purple-500 text-white border-purple-600" },
+  { name: "橘色", value: "bg-orange-500 text-white border-orange-600" },
+  { name: "黑色", value: "bg-black text-white border-zinc-800" },
 ];
 
 export default function MatrixPage() {
+  // 網格狀態 (8x10)
   const [gridColors, setGridColors] = useState<string[][]>(
-    Array(10).fill(null).map(() => Array(10).fill("bg-white text-black border-gray-300"))
+    Array(8).fill(null).map(() => Array(10).fill("bg-white text-black border-gray-300"))
   );
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionsLoading, setQuestionsLoading] = useState(true);
 
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
-  
   const [activeModal, setActiveModal] = useState<"menu" | "question" | null>(null);
   const [currentQuestionText, setCurrentQuestionText] = useState<string>("");
+
+  // ====== 計時器狀態 ======
+  // 1. 活動總計時 (90分鐘 = 5400秒)
+  const [mainTime, setMainTime] = useState(90 * 60);
+  const [isMainRunning, setIsMainRunning] = useState(false);
+
+  // 2. 題目倒數計時 (30秒)
+  const [questionTime, setQuestionTime] = useState(30);
+
+  // 取得問題資料
+  useEffect(() => {
+    fetch("/api/questions")
+      .then((res) => res.json())
+      .then((data: Question[]) => setQuestions(data))
+      .catch(() => setQuestions([]))
+      .finally(() => setQuestionsLoading(false));
+  }, []);
+
+  // 主計時器邏輯
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isMainRunning && mainTime > 0) {
+      interval = setInterval(() => setMainTime((prev) => prev - 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isMainRunning, mainTime]);
+
+  // 題目 30 秒計時器邏輯
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (activeModal === "question" && questionTime > 0) {
+      interval = setInterval(() => setQuestionTime((prev) => prev - 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [activeModal, questionTime]);
+
+  // 格式化時間 (MM:SS)
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
 
   const handleCellClick = (rowIndex: number, colIndex: number) => {
     setSelectedCell({ row: rowIndex, col: colIndex });
@@ -62,19 +105,12 @@ export default function MatrixPage() {
     }
   };
 
-  useEffect(() => {
-    fetch("/api/questions")
-      .then((res) => res.json())
-      .then((data: Question[]) => setQuestions(data))
-      .catch(() => setQuestions([]))
-      .finally(() => setQuestionsLoading(false));
-  }, []);
-
   const handleDrawQuestion = async () => {
     const availableQuestions = questions.filter((q) => !q.isShown);
 
     if (availableQuestions.length === 0) {
       setCurrentQuestionText("所有問題皆已抽完！");
+      setQuestionTime(0); // 沒問題不用計時
       setActiveModal("question");
       return;
     }
@@ -82,14 +118,17 @@ export default function MatrixPage() {
     const randomIndex = Math.floor(Math.random() * availableQuestions.length);
     const pickedQuestion = availableQuestions[randomIndex];
 
-    setQuestions((prevQuestions) =>
-      prevQuestions.map((q) =>
-        q.text === pickedQuestion.text ? { ...q, isShown: true } : q
-      )
+    // 更新前端狀態
+    setQuestions((prev) =>
+      prev.map((q) => (q.text === pickedQuestion.text ? { ...q, isShown: true } : q))
     );
+    
+    // 設定題目與重置30秒
     setCurrentQuestionText(pickedQuestion.text);
+    setQuestionTime(30);
     setActiveModal("question");
 
+    // 同步到後端 API
     try {
       await fetch("/api/questions", {
         method: "POST",
@@ -97,10 +136,9 @@ export default function MatrixPage() {
         body: JSON.stringify({ text: pickedQuestion.text }),
       });
     } catch {
-      setQuestions((prevQuestions) =>
-        prevQuestions.map((q) =>
-          q.text === pickedQuestion.text ? { ...q, isShown: false } : q
-        )
+      // 失敗則復原狀態
+      setQuestions((prev) =>
+        prev.map((q) => (q.text === pickedQuestion.text ? { ...q, isShown: false } : q))
       );
     }
   };
@@ -111,119 +149,147 @@ export default function MatrixPage() {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-900 text-white flex flex-col items-center justify-center p-4">
-      <div className="max-w-4xl w-full flex flex-col items-center">
+    <main className="min-h-screen bg-zinc-950 text-white flex p-4 gap-4 overflow-hidden">
+      
+      {/* ====== 左側：控制面板 & 總計時器 ====== */}
+      <aside className="w-64 bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col justify-start items-center shadow-2xl flex-shrink-0">
+        <h2 className="text-xl font-bold text-zinc-400 mb-6 tracking-widest border-b border-zinc-700 pb-2 w-full text-center">
+          活動時間
+        </h2>
         
-        {/* 頂部：地表圖片 */}
-        <div className="w-full relative h-16 mb-2 rounded-t-lg overflow-hidden shadow-md">
-           <div className="absolute inset-0 bg-zinc-700"></div>
-           <Image 
-             src="/ground.png"
-             alt="地表" 
-             fill
-             className="object-cover" 
-             priority
-           />
+        <div className={`text-6xl font-black font-mono mb-8 tracking-wider ${mainTime <= 300 ? 'text-red-500 animate-pulse' : 'text-cyan-400'}`}>
+          {formatTime(mainTime)}
         </div>
 
-        {/* 中間主體：左右純黑石頭 + 中間矩陣 */}
-        <div className="w-full flex items-stretch gap-2">
+        <div className="flex flex-col gap-3 w-full">
+          <button
+            onClick={() => setIsMainRunning(!isMainRunning)}
+            className={`w-full py-4 text-xl font-bold rounded-lg transition-all ${
+              isMainRunning 
+              ? "bg-amber-600 hover:bg-amber-500 text-white shadow-[0_0_15px_rgba(217,119,6,0.5)]" 
+              : "bg-green-600 hover:bg-green-500 text-white shadow-[0_0_15px_rgba(22,163,7,0.5)]"
+            }`}
+          >
+            {isMainRunning ? "暫停計時 ⏸" : "開始計時 ▶"}
+          </button>
           
-          {/* 左側：石頭 */}
-          <div className="w-8 md:w-12 bg-black flex items-center justify-center rounded-l-lg shadow-inner border border-zinc-800 flex-shrink-0"></div>
+          <button
+            onClick={() => {
+              setIsMainRunning(false);
+              setMainTime(90 * 60);
+            }}
+            className="w-full py-3 text-lg font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all"
+          >
+            重置 90 分鐘
+          </button>
+        </div>
 
-          {/* 核心網格區塊 - 加入 A-J 與 1-10 標示 */}
-          <div className="flex-1 bg-zinc-800 p-4 rounded-md border border-zinc-700 shadow-xl flex flex-col aspect-square max-h-[65vh]">
-            
-            <div className="grid grid-cols-[auto_repeat(10,minmax(0,1fr))] grid-rows-[auto_repeat(10,minmax(0,1fr))] gap-1 md:gap-1.5 w-full h-full">
-              
-              {/* 左上角空白佔位 */}
-              <div className="w-5 md:w-6 h-5 md:h-6"></div>
+        <div className="mt-auto w-full pt-6 border-t border-zinc-800">
+          <p className="text-sm text-zinc-500 text-center">
+            {questionsLoading
+              ? "載入題庫中..."
+              : `目前進度：${questions.filter((q) => q.isShown).length} / ${questions.length} 題`}
+          </p>
+        </div>
+      </aside>
 
-              {/* 頂部欄位標籤 (1 ~ 10) */}
-              {[...Array(10)].map((_, colIndex) => (
-                <div key={`header-col-${colIndex}`} className="flex items-end justify-center pb-1 text-zinc-400 font-mono text-xs md:text-sm font-bold select-none">
-                  {colIndex + 1}
-                </div>
-              ))}
-
-              {/* 內容列：左側行標籤 (A ~ J) + 矩陣按鈕 */}
-              {matrixCharacters.map((row, rowIndex) => (
-                <React.Fragment key={`row-group-${rowIndex}`}>
-                  
-                  {/* 左側列標籤 (A ~ J) */}
-                  <div className="flex items-center justify-end pr-1 md:pr-2 text-zinc-400 font-mono text-xs md:text-sm font-bold select-none">
-                    {String.fromCharCode(65 + rowIndex)}
-                  </div>
-
-                  {/* 矩陣按鈕 */}
-                  {row.map((char, colIndex) => (
-                    <button
-                      key={`${rowIndex}-${colIndex}`}
-                      onClick={() => handleCellClick(rowIndex, colIndex)}
-                      className={`w-full h-full flex items-center justify-center font-bold text-base md:text-xl rounded transition-all duration-200 border transform active:scale-95 shadow-sm ${gridColors[rowIndex][colIndex]}`}
-                    >
-                      {char}
-                    </button>
-                  ))}
-
-                </React.Fragment>
-              ))}
-            </div>
-
+      {/* ====== 右側：主體矩陣版面 ====== */}
+      <section className="flex-1 flex flex-col items-center justify-center min-w-[800px]">
+        <div className="w-full max-w-[1400px] flex flex-col">
+          
+          {/* 頂部：地表圖片 */}
+          <div className="w-full relative h-16 md:h-20 mb-2 rounded-t-lg overflow-hidden shadow-md">
+            <Image src="/ground.png" alt="地表" fill className="object-cover" priority />
           </div>
 
-          {/* 右側：石頭 */}
-          <div className="w-8 md:w-12 bg-black flex items-center justify-center rounded-r-lg shadow-inner border border-zinc-800 flex-shrink-0"></div>
-        </div>
+          <div className="w-full flex items-stretch gap-2">
+            
+            {/* 左側：純黑石頭 */}
+            <div className="w-16 md:w-20 bg-black flex items-center justify-center rounded-l-lg shadow-inner border border-zinc-800 flex-shrink-0">
+              <span className="writing-mode-vertical text-center font-bold tracking-widest text-zinc-400 text-lg select-none [writing-mode:vertical-lr]">
+                
+              </span>
+            </div>
 
-        {/* 底部：鑽石終點圖片 */}
-        <div className="w-full relative h-16 mt-2 rounded-b-lg overflow-hidden shadow-md">
-           <div className="absolute inset-0 bg-cyan-900"></div>
-           <Image 
-             src="/diamond.png"
-             loading="eager"
-             alt="鑽石" 
-             fill
-             className="object-cover" 
-           />
-        </div>
+            {/* 核心區域：包含標籤與 8x10 網格 */}
+            <div className="flex-1 bg-zinc-800/80 p-2 md:p-4 rounded-md border border-zinc-700 shadow-xl flex flex-col gap-2">
+              
+              {/* 橫向編號：1 到 10 */}
+              <div className="flex ml-8 md:ml-12 mb-2">
+                {colLabels.map((label) => (
+                  <div key={`col-${label}`} className="flex-1 text-center font-black text-3xl md:text-4xl text-yellow-400 drop-shadow-md">
+                    {label}
+                  </div>
+                ))}
+              </div>
 
-        {/* 目前題目狀態計數 */}
-        <div className="mt-4 text-xs text-zinc-500">
-          {questionsLoading
-            ? "載入問題庫中..."
-            : `目前問題庫進度：已抽取 ${questions.filter((q) => q.isShown).length} 題 / 總計 ${questions.length} 題`}
-        </div>
-      </div>
+              {/* 網格與縱向編號 */}
+              <div className="flex-1 flex flex-col gap-1.5 md:gap-2">
+                {matrixCharacters.map((row, rowIndex) => (
+                  <div key={`row-${rowIndex}`} className="flex-1 flex items-stretch gap-1.5 md:gap-2">
+                    
+                    {/* 縱向編號：A 到 H */}
+                    <div className="w-8 md:w-12 flex items-center justify-center font-black text-3xl md:text-4xl text-yellow-400 drop-shadow-md">
+                      {rowLabels[rowIndex]}
+                    </div>
 
-      {/* 彈窗 1：功能選擇選單 */}
+                    {/* 當列的 10 個按鈕 */}
+                    {row.map((char, colIndex) => (
+                      <button
+                        key={`${rowIndex}-${colIndex}`}
+                        onClick={() => handleCellClick(rowIndex, colIndex)}
+                        className={`flex-1 flex items-center justify-center font-bold text-2xl md:text-3xl rounded transition-all duration-200 border transform hover:scale-105 active:scale-95 shadow-sm min-h-[50px] md:min-h-[70px] ${gridColors[rowIndex][colIndex]}`}
+                      >
+                        {char}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 右側：純黑石頭 */}
+            <div className="w-16 md:w-20 bg-black flex items-center justify-center rounded-r-lg shadow-inner border border-zinc-800 flex-shrink-0">
+              <span className="writing-mode-vertical text-center font-bold tracking-widest text-zinc-400 text-lg select-none [writing-mode:vertical-lr]">
+                
+              </span>
+            </div>
+          </div>
+
+          {/* 底部：鑽石圖片 */}
+          <div className="w-full relative h-16 md:h-20 mt-2 rounded-b-lg overflow-hidden shadow-md">
+            <Image src="/diamond.png" alt="鑽石" fill className="object-cover" />
+          </div>
+
+        </div>
+      </section>
+
+      {/* ====== 彈窗 1：功能選擇選單 ====== */}
       {activeModal === "menu" && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-zinc-800 border border-zinc-700 p-6 rounded-xl max-w-sm w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-center mb-4 text-zinc-100">
-              請選擇操作位置：({selectedCell ? String.fromCharCode(65 + selectedCell.row) : "A"}, {selectedCell ? selectedCell.col + 1 : 1})
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-zinc-800 border border-zinc-600 p-8 rounded-2xl max-w-md w-full shadow-[0_0_30px_rgba(0,0,0,0.8)]">
+            <h3 className="text-3xl font-black text-center mb-6 text-white bg-zinc-900 py-3 rounded-lg border border-zinc-700">
+              目標：{rowLabels[selectedCell?.row ?? 0]}{colLabels[selectedCell?.col ?? 0]}
             </h3>
             
             <button
               onClick={handleDrawQuestion}
-              className="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-3 rounded-lg font-bold mb-5 transition-colors shadow-md flex items-center justify-center gap-2"
+              className="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-5 rounded-xl text-2xl font-black mb-8 transition-colors shadow-lg"
             >
-              <span>❓</span> 隨機抽取問題
+              ❓ 抽取問題
             </button>
 
-            <div className="border-t border-zinc-700 pt-4">
-              <p className="text-sm text-zinc-400 mb-3 font-medium text-center">🎨 變更格子顏色</p>
-              
-              {/* 修改為純顏色色塊 (Swatches) */}
+            <div className="border-t-2 border-zinc-700 pt-6">
+              <p className="text-lg text-zinc-300 mb-4 font-bold text-center">🎨 變更格子顏色</p>
               <div className="grid grid-cols-4 gap-3">
-                {colorOptions.map((colorClass, index) => (
+                {colorOptions.map((color) => (
                   <button
-                    key={colorClass}
-                    onClick={() => handleColorSelect(colorClass)}
-                    title={index === 6 ? "清除" : index === 7 ? "黑石" : `顏色 ${index + 1}`}
-                    className={`h-12 w-full rounded-md border-2 shadow-sm hover:scale-105 active:scale-95 transition-all ${colorClass} ${index === 6 ? 'relative' : ''}`}
+                    key={color.name}
+                    onClick={() => handleColorSelect(color.value)}
+                    className={`h-14 rounded-lg border-2 ${color.value} flex items-center justify-center hover:opacity-80 active:scale-90 transition-transform shadow-md`}
+                    aria-label={color.name}
                   >
+                    {/* 移除了原本顯示的 color.name */}
                   </button>
                 ))}
               </div>
@@ -231,30 +297,38 @@ export default function MatrixPage() {
 
             <button
               onClick={closeModal}
-              className="w-full mt-6 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 py-2.5 rounded-lg text-sm transition-colors"
+              className="w-full mt-8 bg-zinc-700 hover:bg-zinc-600 text-white py-4 rounded-xl text-xl font-bold transition-colors"
             >
-              取消
+              關閉選單
             </button>
           </div>
         </div>
       )}
 
-      {/* 彈窗 2：顯示抽到的隨機問題 */}
+      {/* ====== 彈窗 2：滿版題目顯示 & 30秒倒數 ====== */}
       {activeModal === "question" && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-zinc-800 border-2 border-cyan-500 p-6 rounded-xl max-w-md w-full shadow-2xl text-center">
-            <div className="text-cyan-400 text-4xl mb-3">💡</div>
-            <h3 className="text-xl font-bold mb-4 text-cyan-300">心靈探索提問</h3>
-            <div className="bg-zinc-900 p-4 rounded-lg border border-zinc-700 text-lg leading-relaxed text-zinc-200 mb-6">
-              {currentQuestionText}
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-8 z-[100] gap-8">
+          
+          {/* 30 秒倒數計時器 (如果還沒抽完題目) */}
+          {currentQuestionText !== "所有問題皆已抽完！" && (
+             <div className={`mt-8 text-8xl font-black text-red-500 bg-red-950/50 border-4 border-red-500/50 px-10 py-4 rounded-3xl shadow-[0_0_40px_rgba(239,68,68,0.4)] min-w-[350px] text-center ${questionTime > 0 ? 'font-mono' : 'tracking-widest'}`}>
+              {questionTime > 0 ? questionTime : "時間到"}
             </div>
-            <button
-              onClick={() => setActiveModal("menu")} 
-              className="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-2 rounded-lg font-bold transition-colors shadow-md"
-            >
-              確認並關閉問題
-            </button>
+          )}
+
+          {/* 題目主體 (滿版大字) */}
+          <div className="flex-1 flex flex-col items-center justify-center w-full max-w-[80vw]">
+            <h1 className="text-5xl md:text-[5vw] leading-tight font-black text-center text-white drop-shadow-[0_5px_15px_rgba(0,0,0,1)] px-12 py-10 bg-zinc-900/80 border-4 border-cyan-500 rounded-3xl w-full break-words">
+              {currentQuestionText}
+            </h1>
           </div>
+
+          <button
+            onClick={() => setActiveModal("menu")} 
+            className="mb-10 bg-cyan-600 hover:bg-cyan-500 text-white px-16 py-6 rounded-2xl text-4xl font-black transition-all shadow-[0_10px_25px_rgba(8,145,178,0.5)] hover:scale-105 active:scale-95"
+          >
+            回答完畢
+          </button>
         </div>
       )}
     </main>
