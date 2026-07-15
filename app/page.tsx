@@ -131,7 +131,7 @@ export default function MatrixPage() {
           </div>
           <div className="w-full flex-1 flex items-stretch gap-2 min-h-0">
             <div className="w-20 bg-black flex items-center justify-center rounded-l-lg border border-zinc-800">
-              <span className="[writing-mode:vertical-lr] font-bold text-xl text-zinc-400">最堅硬的石頭</span>
+              <span className="[writing-mode:vertical-lr] font-bold text-xl text-zinc-400"></span>
             </div>
             <div className="flex-1 h-full bg-zinc-800/80 p-4 rounded-md border border-zinc-700 flex flex-col gap-2 overflow-hidden">
               <div className="flex ml-12 mb-2">{colLabels.map(l => <div key={l} className="flex-1 text-center font-black text-4xl text-yellow-400">{l}</div>)}</div>
@@ -147,7 +147,7 @@ export default function MatrixPage() {
               </div>
             </div>
             <div className="w-20 bg-black flex items-center justify-center rounded-r-lg border border-zinc-800">
-              <span className="[writing-mode:vertical-lr] font-bold text-xl text-zinc-400">最堅硬的石頭</span>
+              <span className="[writing-mode:vertical-lr] font-bold text-xl text-zinc-400"></span>
             </div>
           </div>
           <div className="w-full relative h-[8%] min-h-[60px] mt-2 rounded-b-lg overflow-hidden flex-shrink-0">
