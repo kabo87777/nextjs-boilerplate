@@ -306,7 +306,7 @@ export default function MatrixPage() {
         </div>
       )}
 
-      {/* ====== 彈窗 2：滿版題目顯示 & 30秒倒數 ====== */}
+     {/* ====== 彈窗 2：滿版題目顯示 & 30秒倒數 ====== */}
       {activeModal === "question" && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-8 z-[100] gap-8">
           
@@ -317,13 +317,17 @@ export default function MatrixPage() {
                 {questionTime > 0 ? questionTime : "時間到"}
               </div>
               
-              {/* 開始倒數按鈕 (計時開始後自動隱藏) */}
-              {!isQuestionRunning && questionTime === 30 && (
+              {/* 開始/暫停倒數按鈕 (時間歸零前皆可操作) */}
+              {questionTime > 0 && (
                 <button
-                  onClick={() => setIsQuestionRunning(true)}
-                  className="bg-red-600 hover:bg-red-500 text-white px-8 py-3 rounded-full text-2xl font-bold transition-all shadow-lg"
+                  onClick={() => setIsQuestionRunning(!isQuestionRunning)}
+                  className={`px-8 py-3 rounded-full text-2xl font-bold transition-all shadow-lg ${
+                    isQuestionRunning 
+                    ? "bg-amber-600 hover:bg-amber-500 text-white shadow-[0_0_15px_rgba(217,119,6,0.5)]" 
+                    : "bg-green-600 hover:bg-green-500 text-white shadow-[0_0_15px_rgba(22,163,7,0.5)]"
+                  }`}
                 >
-                  ▶ 開始 30 秒倒數
+                  {isQuestionRunning ? "⏸ 暫停倒數" : "▶ 開始 30 秒倒數"}
                 </button>
               )}
             </div>
