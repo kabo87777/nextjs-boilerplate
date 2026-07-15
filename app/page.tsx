@@ -8,7 +8,7 @@ interface Question {
   isShown: boolean;
 }
 
-// 1. 8 列 x 10 行 的矩陣
+// 1. 更新為 8 列 x 10 行 的矩陣
 const matrixCharacters = [
   ["貪", "疑", "疑", "嗔", "慢", "疑", "疑", "癡", "慢", "嗔"],
   ["嗔", "癡", "嗔", "癡", "貪", "癡", "嗔", "嗔", "癡", "疑"],
@@ -152,22 +152,24 @@ export default function MatrixPage() {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white flex p-4 gap-4 overflow-hidden">
+    // 【修改點】改為 h-screen w-screen，強制填滿且不出現卷軸
+    <main className="h-screen w-screen bg-zinc-950 text-white flex p-4 gap-4 overflow-hidden">
       
       {/* ====== 左側：控制面板 & 總計時器 ====== */}
-      <aside className="w-64 bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col justify-start items-center shadow-2xl flex-shrink-0">
-        <h2 className="text-xl font-bold text-zinc-400 mb-6 tracking-widest border-b border-zinc-700 pb-2 w-full text-center">
+      {/* 【修改點】加上 h-full 讓側邊欄頂天立地 */}
+      <aside className="w-64 md:w-72 lg:w-80 h-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col justify-start items-center shadow-2xl flex-shrink-0">
+        <h2 className="text-xl md:text-2xl font-bold text-zinc-400 mb-6 tracking-widest border-b border-zinc-700 pb-2 w-full text-center">
           活動時間
         </h2>
         
-        <div className={`text-6xl font-black font-mono mb-8 tracking-wider ${mainTime <= 300 ? 'text-red-500 animate-pulse' : 'text-cyan-400'}`}>
+        <div className={`text-6xl md:text-7xl font-black font-mono mb-8 tracking-wider ${mainTime <= 300 ? 'text-red-500 animate-pulse' : 'text-cyan-400'}`}>
           {formatTime(mainTime)}
         </div>
 
-        <div className="flex flex-col gap-3 w-full">
+        <div className="flex flex-col gap-4 w-full">
           <button
             onClick={() => setIsMainRunning(!isMainRunning)}
-            className={`w-full py-4 text-xl font-bold rounded-lg transition-all ${
+            className={`w-full py-5 text-2xl font-bold rounded-lg transition-all ${
               isMainRunning 
               ? "bg-amber-600 hover:bg-amber-500 text-white shadow-[0_0_15px_rgba(217,119,6,0.5)]" 
               : "bg-green-600 hover:bg-green-500 text-white shadow-[0_0_15px_rgba(22,163,7,0.5)]"
@@ -181,14 +183,14 @@ export default function MatrixPage() {
               setIsMainRunning(false);
               setMainTime(90 * 60);
             }}
-            className="w-full py-3 text-lg font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all"
+            className="w-full py-4 text-xl font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all"
           >
             重置 90 分鐘
           </button>
         </div>
 
         <div className="mt-auto w-full pt-6 border-t border-zinc-800">
-          <p className="text-sm text-zinc-500 text-center">
+          <p className="text-base text-zinc-500 text-center">
             {questionsLoading
               ? "載入題庫中..."
               : `目前進度：${questions.filter((q) => q.isShown).length} / ${questions.length} 題`}
@@ -197,51 +199,56 @@ export default function MatrixPage() {
       </aside>
 
       {/* ====== 右側：主體矩陣版面 ====== */}
-      <section className="flex-1 flex flex-col items-center justify-center min-w-[800px]">
-        <div className="w-full max-w-[1400px] flex flex-col">
+      {/* 【修改點】改為 h-full 讓右邊填滿整個高度，並移除 min-w 限制讓他有彈性 */}
+      <section className="flex-1 h-full flex flex-col">
+        {/* 【修改點】移除 max-w-[1400px]，加上 h-full 讓容器徹底向外撐開 */}
+        <div className="w-full h-full flex flex-col">
           
           {/* 頂部：地表圖片 */}
-          <div className="w-full relative h-16 md:h-20 mb-2 rounded-t-lg overflow-hidden shadow-md">
+          {/* 【修改點】高度改成 h-[8%]，隨螢幕高度動態調整 */}
+          <div className="w-full relative h-[8%] min-h-[60px] max-h-[120px] mb-2 rounded-t-lg overflow-hidden shadow-md flex-shrink-0">
             <Image src="/ground.png" alt="地表" fill className="object-cover" priority />
           </div>
 
-          <div className="w-full flex items-stretch gap-2">
+          {/* 【修改點】加上 flex-1 與 min-h-0，這層是讓內部網格能完美伸縮的關鍵 */}
+          <div className="w-full flex-1 flex items-stretch gap-2 min-h-0">
             
             {/* 左側：純黑石頭 */}
             <div className="w-16 md:w-20 bg-black flex items-center justify-center rounded-l-lg shadow-inner border border-zinc-800 flex-shrink-0">
-              <span className="writing-mode-vertical text-center font-bold tracking-widest text-zinc-400 text-lg select-none [writing-mode:vertical-lr]">
+              <span className="writing-mode-vertical text-center font-bold tracking-widest text-zinc-400 text-xl select-none [writing-mode:vertical-lr]">
                 最堅硬的石頭
               </span>
             </div>
 
             {/* 核心區域：包含標籤與 8x10 網格 */}
-            <div className="flex-1 bg-zinc-800/80 p-2 md:p-4 rounded-md border border-zinc-700 shadow-xl flex flex-col gap-2">
+            <div className="flex-1 h-full bg-zinc-800/80 p-2 md:p-4 rounded-md border border-zinc-700 shadow-xl flex flex-col gap-2 overflow-hidden">
               
               {/* 橫向編號：1 到 10 */}
-              <div className="flex ml-8 md:ml-12 mb-2">
+              <div className="flex ml-8 md:ml-12 mb-1 flex-shrink-0">
                 {colLabels.map((label) => (
-                  <div key={`col-${label}`} className="flex-1 text-center font-black text-3xl md:text-4xl text-yellow-400 drop-shadow-md">
+                  <div key={`col-${label}`} className="flex-1 text-center font-black text-3xl md:text-5xl text-yellow-400 drop-shadow-md">
                     {label}
                   </div>
                 ))}
               </div>
 
               {/* 網格與縱向編號 */}
-              <div className="flex-1 flex flex-col gap-1.5 md:gap-2">
+              <div className="flex-1 flex flex-col gap-1.5 md:gap-2 min-h-0">
                 {matrixCharacters.map((row, rowIndex) => (
                   <div key={`row-${rowIndex}`} className="flex-1 flex items-stretch gap-1.5 md:gap-2">
                     
                     {/* 縱向編號：A 到 H */}
-                    <div className="w-8 md:w-12 flex items-center justify-center font-black text-3xl md:text-4xl text-yellow-400 drop-shadow-md">
+                    <div className="w-8 md:w-12 flex items-center justify-center font-black text-3xl md:text-5xl text-yellow-400 drop-shadow-md flex-shrink-0">
                       {rowLabels[rowIndex]}
                     </div>
 
                     {/* 當列的 10 個按鈕 */}
+                    {/* 【修改點】移除了按鈕的 min-h-[70px]，讓它完全依靠 flex-1 自動均分伸展 */}
                     {row.map((char, colIndex) => (
                       <button
                         key={`${rowIndex}-${colIndex}`}
                         onClick={() => handleCellClick(rowIndex, colIndex)}
-                        className={`flex-1 flex items-center justify-center font-bold text-2xl md:text-3xl rounded transition-all duration-200 border transform hover:scale-105 active:scale-95 shadow-sm min-h-[50px] md:min-h-[70px] ${gridColors[rowIndex][colIndex]}`}
+                        className={`flex-1 flex items-center justify-center font-bold text-3xl md:text-4xl rounded transition-all duration-200 border transform hover:scale-105 active:scale-95 shadow-sm ${gridColors[rowIndex][colIndex]}`}
                       >
                         {char}
                       </button>
@@ -253,14 +260,15 @@ export default function MatrixPage() {
 
             {/* 右側：純黑石頭 */}
             <div className="w-16 md:w-20 bg-black flex items-center justify-center rounded-r-lg shadow-inner border border-zinc-800 flex-shrink-0">
-              <span className="writing-mode-vertical text-center font-bold tracking-widest text-zinc-400 text-lg select-none [writing-mode:vertical-lr]">
+              <span className="writing-mode-vertical text-center font-bold tracking-widest text-zinc-400 text-xl select-none [writing-mode:vertical-lr]">
                 最堅硬的石頭
               </span>
             </div>
           </div>
 
           {/* 底部：鑽石圖片 */}
-          <div className="w-full relative h-16 md:h-20 mt-2 rounded-b-lg overflow-hidden shadow-md">
+          {/* 【修改點】高度改成 h-[8%]，隨螢幕高度動態調整 */}
+          <div className="w-full relative h-[8%] min-h-[60px] max-h-[120px] mt-2 rounded-b-lg overflow-hidden shadow-md flex-shrink-0">
             <Image src="/diamond.png" alt="鑽石" fill className="object-cover" />
           </div>
 
@@ -306,7 +314,7 @@ export default function MatrixPage() {
         </div>
       )}
 
-     {/* ====== 彈窗 2：滿版題目顯示 & 30秒倒數 ====== */}
+      {/* ====== 彈窗 2：滿版題目顯示 & 30秒倒數 ====== */}
       {activeModal === "question" && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-8 z-[100] gap-8">
           
