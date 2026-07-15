@@ -8,7 +8,7 @@ interface Question {
   isShown: boolean;
 }
 
-// 1. 更新為 8 列 x 10 行 的矩陣
+// 1. 8 列 x 10 行 的矩陣
 const matrixCharacters = [
   ["貪", "疑", "疑", "嗔", "慢", "疑", "疑", "癡", "慢", "嗔"],
   ["嗔", "癡", "嗔", "癡", "貪", "癡", "嗔", "嗔", "癡", "疑"],
@@ -55,6 +55,7 @@ export default function MatrixPage() {
 
   // 2. 題目倒數計時 (30秒)
   const [questionTime, setQuestionTime] = useState(30);
+  const [isQuestionRunning, setIsQuestionRunning] = useState(false);
 
   // 取得問題資料
   useEffect(() => {
@@ -77,11 +78,11 @@ export default function MatrixPage() {
   // 題目 30 秒計時器邏輯
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (activeModal === "question" && questionTime > 0) {
+    if (activeModal === "question" && isQuestionRunning && questionTime > 0) {
       interval = setInterval(() => setQuestionTime((prev) => prev - 1), 1000);
     }
     return () => clearInterval(interval);
-  }, [activeModal, questionTime]);
+  }, [activeModal, isQuestionRunning, questionTime]);
 
   // 格式化時間 (MM:SS)
   const formatTime = (seconds: number) => {
@@ -110,7 +111,8 @@ export default function MatrixPage() {
 
     if (availableQuestions.length === 0) {
       setCurrentQuestionText("所有問題皆已抽完！");
-      setQuestionTime(0); // 沒問題不用計時
+      setQuestionTime(0);
+      setIsQuestionRunning(false);
       setActiveModal("question");
       return;
     }
@@ -123,9 +125,10 @@ export default function MatrixPage() {
       prev.map((q) => (q.text === pickedQuestion.text ? { ...q, isShown: true } : q))
     );
     
-    // 設定題目與重置30秒
+    // 設定題目與重置30秒狀態
     setCurrentQuestionText(pickedQuestion.text);
     setQuestionTime(30);
+    setIsQuestionRunning(false); // 確保每次抽題都是等待開始的狀態
     setActiveModal("question");
 
     // 同步到後端 API
@@ -207,7 +210,7 @@ export default function MatrixPage() {
             {/* 左側：純黑石頭 */}
             <div className="w-16 md:w-20 bg-black flex items-center justify-center rounded-l-lg shadow-inner border border-zinc-800 flex-shrink-0">
               <span className="writing-mode-vertical text-center font-bold tracking-widest text-zinc-400 text-lg select-none [writing-mode:vertical-lr]">
-                
+                最堅硬的石頭
               </span>
             </div>
 
@@ -251,7 +254,7 @@ export default function MatrixPage() {
             {/* 右側：純黑石頭 */}
             <div className="w-16 md:w-20 bg-black flex items-center justify-center rounded-r-lg shadow-inner border border-zinc-800 flex-shrink-0">
               <span className="writing-mode-vertical text-center font-bold tracking-widest text-zinc-400 text-lg select-none [writing-mode:vertical-lr]">
-                
+                最堅硬的石頭
               </span>
             </div>
           </div>
@@ -288,9 +291,7 @@ export default function MatrixPage() {
                     onClick={() => handleColorSelect(color.value)}
                     className={`h-14 rounded-lg border-2 ${color.value} flex items-center justify-center hover:opacity-80 active:scale-90 transition-transform shadow-md`}
                     aria-label={color.name}
-                  >
-                    {/* 移除了原本顯示的 color.name */}
-                  </button>
+                  ></button>
                 ))}
               </div>
             </div>
@@ -309,14 +310,26 @@ export default function MatrixPage() {
       {activeModal === "question" && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-8 z-[100] gap-8">
           
-          {/* 30 秒倒數計時器 (如果還沒抽完題目) */}
+          {/* 30 秒倒數計時器容器 */}
           {currentQuestionText !== "所有問題皆已抽完！" && (
-             <div className={`mt-8 text-8xl font-black text-red-500 bg-red-950/50 border-4 border-red-500/50 px-10 py-4 rounded-3xl shadow-[0_0_40px_rgba(239,68,68,0.4)] min-w-[350px] text-center ${questionTime > 0 ? 'font-mono' : 'tracking-widest'}`}>
-              {questionTime > 0 ? questionTime : "時間到"}
+            <div className="flex flex-col items-center gap-4 mt-8">
+              <div className={`text-8xl font-black text-red-500 bg-red-950/50 border-4 border-red-500/50 px-10 py-4 rounded-3xl shadow-[0_0_40px_rgba(239,68,68,0.4)] min-w-[350px] text-center ${questionTime > 0 ? 'font-mono' : 'tracking-widest'}`}>
+                {questionTime > 0 ? questionTime : "時間到"}
+              </div>
+              
+              {/* 開始倒數按鈕 (計時開始後自動隱藏) */}
+              {!isQuestionRunning && questionTime === 30 && (
+                <button
+                  onClick={() => setIsQuestionRunning(true)}
+                  className="bg-red-600 hover:bg-red-500 text-white px-8 py-3 rounded-full text-2xl font-bold transition-all shadow-lg"
+                >
+                  ▶ 開始 30 秒倒數
+                </button>
+              )}
             </div>
           )}
 
-          {/* 題目主體 (滿版大字) */}
+          {/* 題目主體 (四面邊框 border-4) */}
           <div className="flex-1 flex flex-col items-center justify-center w-full max-w-[80vw]">
             <h1 className="text-5xl md:text-[5vw] leading-tight font-black text-center text-white drop-shadow-[0_5px_15px_rgba(0,0,0,1)] px-12 py-10 bg-zinc-900/80 border-4 border-cyan-500 rounded-3xl w-full break-words">
               {currentQuestionText}
@@ -327,7 +340,7 @@ export default function MatrixPage() {
             onClick={() => setActiveModal("menu")} 
             className="mb-10 bg-cyan-600 hover:bg-cyan-500 text-white px-16 py-6 rounded-2xl text-4xl font-black transition-all shadow-[0_10px_25px_rgba(8,145,178,0.5)] hover:scale-105 active:scale-95"
           >
-            回答完畢
+            我回答完畢了！
           </button>
         </div>
       )}
